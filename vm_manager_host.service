@@ -1,0 +1,10 @@
+[Unit]
+Description=VM Manager Host API Service
+After=pve-guests.service
+
+[Service]
+Type=simple
+ExecStart=/bin/python3 /root/vm_manager_host/vm_manager_host.py
+
+[Install]
+WantedBy=multi-user.target
