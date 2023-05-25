@@ -19,7 +19,7 @@ log.setLevel(logging.ERROR)
 
 app = flask.Flask(__name__)
 
-app_version = "1.0.0"
+app_version = "1.0.1"
 
 class Service:
     def __init__(self):
@@ -163,14 +163,18 @@ class Service:
                                 if (os.path.isfile(self.profile_file_path)):
                                     with open(self.profile_file_path, mode="rb") as profile_file:
                                         toml = tomli.load(profile_file)
-                                        if (vm in toml["vm"]): #if vm has profile override get vgpu memory size
-                                            raw_framebuffer = toml["vm"][vm]["framebuffer"]
-                                            raw_framebuffer_reservation = toml["vm"][vm]["framebuffer_reservation"]
-                                            string_memory_size = str(math.floor((raw_framebuffer / 1024 / 1024) + (raw_framebuffer_reservation / 1024 / 1024)))
-                                            this_gpu_vm.append({"vm_id": vm, "vm_state": "1", "vm_gpu_memory": string_memory_size})
-                                        else: #get vgpu memory size from mdev profile
+                                        try:
+                                            if (vm in toml["vm"]): #if vm has profile override get vgpu memory size
+                                                raw_framebuffer = toml["vm"][vm]["framebuffer"]
+                                                raw_framebuffer_reservation = toml["vm"][vm]["framebuffer_reservation"]
+                                                string_memory_size = str(math.floor((raw_framebuffer / 1024 / 1024) + (raw_framebuffer_reservation / 1024 / 1024)))
+                                                this_gpu_vm.append({"vm_id": vm, "vm_state": "1", "vm_gpu_memory": string_memory_size})
+                                            else: #get vgpu memory size from mdev profile
+                                                with open("/sys/bus/pci/devices/" + gpu[0] + "/00000000-0000-0000-0000-" + vm.zfill(12) + "/mdev_type/description", mode="r") as vgpu_profile_file:
+                                                    this_gpu_vm.append({"vm_id": vm, "vm_state": "1", "vm_gpu_memory": str(re.findall('\d+', vgpu_profile_file.read().split(",")[2].strip())[0])})
+                                        except: #get vgpu memory size from mdev profile
                                             with open("/sys/bus/pci/devices/" + gpu[0] + "/00000000-0000-0000-0000-" + vm.zfill(12) + "/mdev_type/description", mode="r") as vgpu_profile_file:
-                                                this_gpu_vm.append({"vm_id": vm, "vm_state": "1", "vm_gpu_memory": str(re.findall('\d+', vgpu_profile_file.read().split(",")[2].strip())[0])})
+                                                    this_gpu_vm.append({"vm_id": vm, "vm_state": "1", "vm_gpu_memory": str(re.findall('\d+', vgpu_profile_file.read().split(",")[2].strip())[0])})
                                 else: #get vgpu memory size from mdev profile
                                     with open("/sys/bus/pci/devices/" + gpu[0] + "/00000000-0000-0000-0000-" + vm.zfill(12) + "/mdev_type/description", mode="r") as vgpu_profile_file:
                                         this_gpu_vm.append({"vm_id": vm, "vm_state": "1", "vm_gpu_memory": str(re.findall('\d+', vgpu_profile_file.read().split(",")[2].strip())[0])})
